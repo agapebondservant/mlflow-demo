@@ -77,4 +77,4 @@ spec:
         - name: mlflow-service
           port: 8020
   virtualhost:
-    fqdn: mlflow.tanzudatatap.ml
+    fqdn: mlflow.tanzudatatap.ml #replace with your HttpProxy-compatible FQDN
