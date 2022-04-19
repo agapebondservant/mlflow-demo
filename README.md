@@ -1,8 +1,8 @@
 ## Instructions
 
 Before you begin:
-1. Update `resources/mlflow-deployment.yaml` by updating the **container image** and **Minio endpoint** as indicated in the file.
-2. If using Project Contour, uncomment out the `HttpProxy` section of the `resources/mlflow-deployment.yaml` file.
+1. Update `resources/mlflow-deployment.yaml` by updating the **container image**, **Minio endpoint** and **Minio bucket region** as indicated in the file.
+2. If using Project Contour, uncomment out the `HttpProxy` section of the `resources/mlflow-deployment.yaml` file and update the referenced **FQDN** accordingly.
 
 Deploy Postgres Operator (if it does not exist in the cluster):
 ```
