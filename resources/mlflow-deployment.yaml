@@ -65,16 +65,16 @@ spec:
   selector:
     app: mlflow
 ---
-apiVersion: projectcontour.io/v1
-kind: HTTPProxy
-metadata:
-  name: mlflow-httpproxy
-spec:
-  routes:
-    - conditions:
-        - prefix: /
-      services:
-        - name: mlflow-service
-          port: 8020
-  virtualhost:
-    fqdn: mlflow.tanzudatatap.ml #replace with your HttpProxy-compatible FQDN
+# apiVersion: projectcontour.io/v1
+# kind: HTTPProxy
+# metadata:
+#  name: mlflow-httpproxy
+# spec:
+#   routes:
+#     - conditions:
+#         - prefix: /
+#       services:
+#         - name: mlflow-service
+#           port: 8020
+#   virtualhost:
+#     fqdn: mlflow.tanzudatatap.ml #replace with your HttpProxy-compatible FQDN
