@@ -86,4 +86,4 @@ envsubst < resources/mlflow-deployment.yaml | kubectl apply  -n mlflow -f -
 watch kubectl get all -n mlflow
 ```
 
-Access MLFlow via the endpoint indicated in `resources/mlflow-deployment.yaml` (either via FQDN indicated by Contour's HttpProxy, or by the endpoint indicated by the Service if not using HttpProxy)
+Finally, access MLFlow in your browser via the endpoint indicated in `resources/mlflow-deployment.yaml` (either via FQDN indicated by Contour's HttpProxy, or by the endpoint indicated by the Service if not using HttpProxy)
