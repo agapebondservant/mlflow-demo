@@ -43,7 +43,7 @@ spec:
             - name: MLFLOW_S3_IGNORE_TLS
               value: "true"
             - name: AWS_DEFAULT_REGION
-              value: "us-west-2"
+              value: "us-west-2" #replace with your Minio bucket region
             - name: BACKEND_URI
               value: ${MLFLOW_DB_URI}
           ports:
