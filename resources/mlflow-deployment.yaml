@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: ${REGISTRY_CONFIG}
+kind: Secret
+metadata:
+  name: dockersecret
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+        - name: mlflow
+          image: oawofolu/mlflow-server # replace with your container repo
+          imagePullPolicy: Always
+          env:
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: "https://minio.tanzudatatap.ml" #replace with your Minio endpoint
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mlflowcreds
+                  key: AWS_ACCESS_KEY_ID
+                  optional: false
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlflowcreds
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: false
+            - name: MLFLOW_S3_IGNORE_TLS
+              value: "true"
+            - name: AWS_DEFAULT_REGION
+              value: "us-west-2"
+            - name: BACKEND_URI
+              value: ${MLFLOW_DB_URI}
+          ports:
+            - name: http
+              containerPort: 8020
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-service
+spec:
+  type: NodePort
+  ports:
+    - port: 8020
+      targetPort: 8020
+      protocol: TCP
+      name: http
+  selector:
+    app: mlflow
+---
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: mlflow-httpproxy
+spec:
+  routes:
+    - conditions:
+        - prefix: /
+      services:
+        - name: mlflow-service
+          port: 8020
+  virtualhost:
+    fqdn: mlflow.tanzudatatap.ml

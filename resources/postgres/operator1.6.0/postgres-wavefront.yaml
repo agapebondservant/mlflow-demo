@@ -1,0 +1,84 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: wavefront-proxy
+    name: wavefront-proxy
+  name: wavefront-proxy
+  namespace: YOUR_SESSION_NAMESPACE
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wavefront-proxy
+  template:
+    metadata:
+      labels:
+        app: wavefront-proxy
+    spec:
+      containers:
+        - name: wavefront-proxy
+          image: oawofolu/tanzu_observability_proxy:10.13
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WAVEFRONT_URL
+              value: https://vmware.wavefront.com/api/
+            - name: WAVEFRONT_TOKEN
+              value: ${DATA_E2E_WAVEFRONT_ACCESS_TOKEN}
+          securityContext:
+            privileged: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wavefront-proxy
+  labels:
+    app: wavefront-proxy
+  namespace: YOUR_SESSION_NAMESPACE
+spec:
+  ports:
+    - name: wavefront
+      port: 2878
+      protocol: TCP
+  selector:
+    app: wavefront-proxy
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: prometheus-storage-adapter
+  namespace: YOUR_SESSION_NAMESPACE
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-storage-adapter
+  template:
+    metadata:
+      labels:
+        app: prometheus-storage-adapter
+    spec:
+      containers:
+        - name: prometheus-storage-adapter
+          image: wavefronthq/prometheus-storage-adapter:latest
+          command:
+            - /bin/adapter
+            - -listen=1234
+            - -proxy=wavefront-proxy.default.svc.cluster.local
+            - -proxy-port=2878
+            - -prefix=/metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-adapter-service
+  namespace: YOUR_SESSION_NAMESPACE
+spec:
+  selector:
+    app: prometheus-storage-adapter
+  ports:
+    - name: adapter-port
+      protocol: TCP
+      port: 80
+      targetPort: 1234

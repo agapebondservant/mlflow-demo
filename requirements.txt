@@ -1,0 +1,7 @@
+mlflow==1.19.0
+mlflow-skinny
+sqlalchemy
+alembic
+sqlparse
+psycopg2-binary
+boto3
