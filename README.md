@@ -3,6 +3,7 @@
 Before you begin:
 1. Update `resources/mlflow-deployment.yaml` by updating the **container image**, **Minio endpoint** and **Minio bucket region** as indicated in the file.
 2. If using Project Contour, uncomment out the `HttpProxy` section of the `resources/mlflow-deployment.yaml` file and update the referenced **FQDN** accordingly.
+3. Create an environment file `.env`; use `.env-sample` as a template.
 
 Deploy Postgres Operator (if it does not exist in the cluster):
 ```
@@ -42,37 +43,33 @@ export MLFLOW_DB_URI=postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@${MLFL
 
 Build and push Docker image:
 ```
-docker build --build-arg MLFLOW_PORT_NUM=<your port> \
+source .env
+docker build --build-arg MLFLOW_PORT_NUM=${MLFLOW_PORT} \
  --build-arg ARTIFACT_ROOT_PATH=s3://mlflow \
- -t <your-container-repo> . # example: oawofolu/mlflow-server
-docker push <your-container-repo>
+ -t ${MLFLOW_CONTAINER_REPO} . # example: oawofolu/mlflow-server
+docker push ${MLFLOW_CONTAINER_REPO}
 ```
 
-Run Docker image locally:
+Test running Docker image locally:
 ```
 export MLFLOW_DB_PASSWORD=$(kubectl get secret pg-mlflow-db-secret -n mlflow -o jsonpath='{.data.password}' | base64 --decode)
 #export MLFLOW_DB_URI=postgresql://pg-mlflow:${MLFLOW_DB_PASSWORD}@pg-mlflow.mlflow.svc.cluster.local:5432/pg-mlflow
 docker run -it --rm -p 8020:8020 \
--e MLFLOW_PORT=<your port> \ # ex. 8020
--e ARTIFACT_ROOT=s3://<your mlflow S3 bucket>/ \ # ex. mlflow
+-e MLFLOW_PORT=${MLFLOW_PORT} \ # ex. 8020
+-e ARTIFACT_ROOT=s3://${MLFLOW_BUCKET}/ \ # ex. mlflow
 -e MLFLOW_S3_ENDPOINT_URL=https://minio.tanzudatatap.ml/ \ # your Minio endpoint URL
--e AWS_ACCESS_KEY_ID <your s3/minio access key> \ # Your Minio username
--e AWS_SECRET_KEY_ID <your s3/minio secret key> \ # Your Minio password
+-e AWS_ACCESS_KEY_ID ${AWS_ACCESS_KEY_ID} \ # Your Minio username
+-e AWS_SECRET_KEY_ID ${AWS_SECRET_ACCESS_KEY} \ # Your Minio password
 -e BACKEND_URI ${MLFLOW_DB_URI} \ # Your Postgres DB URI, constructed above
 -e MLFLOW_S3_IGNORE_TLS=true\
---name mlflow-server <your-container-repo>
+--name mlflow-server ${MLFLOW_CONTAINER_REPO}
 ```
 
 Deploy MLFLOW access creds: (Requires Kubeseal installation: https://github.com/bitnami-labs/sealed-secrets/releases)
 ```
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.17.4/controller.yaml
 source .env # populate the .env file with the appropriate creds - use .env-sample as a template
-kubectl create secret generic mlflowcreds \
-    --from-literal=AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \ # your Minio username
-    --from-literal=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \ # your Minio password
-    --from-literal=AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \ # your AWS region if deploying on AWS
-    --from-literal=MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL} \ # your Minio endpoint, configured above
-    --from-literal=MLFLOW_S3_IGNORE_TLS=${MLFLOW_S3_IGNORE_TLS} --dry-run=client -o yaml> mlflow-creds-secret.yaml
+kubectl create secret generic mlflowcreds --from-literal=AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} --from-literal=AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} --from-literal=AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} --from-literal=MLFLOW_S3_ENDPOINT_URL=${MLFLOW_S3_ENDPOINT_URL} --from-literal=MLFLOW_S3_IGNORE_TLS=${MLFLOW_S3_IGNORE_TLS} --dry-run=client -o yaml > mlflow-creds-secret.yaml
 kubeseal --scope cluster-wide -o yaml <mlflow-creds-secret.yaml> resources/mlflow-creds-sealedsecret.yaml
 rm mlflow-creds-secret.yaml
 kubectl apply -f resources/mlflow-creds-sealedsecret.yaml -n mlflow

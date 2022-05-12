@@ -1,0 +1,47 @@
+apiVersion: carto.run/v1alpha1
+kind: Workload
+metadata:
+  name: mlflow-tap
+  labels:
+    apps.tanzu.vmware.com/workload-type: web
+    app.kubernetes.io/part-of: mlflow
+spec:
+  image: index.docker.io/oawofolu/mlflow-server
+  env:
+    - name: MLFLOW_S3_ENDPOINT_URL
+      value: "https://minio.tanzudatatap.ml" #replace with your Minio endpoint
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: mlflowcreds
+          key: AWS_ACCESS_KEY_ID
+          optional: false
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: mlflowcreds
+          key: AWS_SECRET_ACCESS_KEY
+          optional: false
+    - name: MLFLOW_S3_IGNORE_TLS
+      value: "true"
+    - name: AWS_DEFAULT_REGION
+      value: "us-west-2" #replace with your Minio bucket region
+    - name: BACKEND_URI
+      value: ${MLFLOW_DB_URI}
+  #params:
+  #  - name: live-update
+  #    value: "true"
+---
+# apiVersion: projectcontour.io/v1
+# kind: HTTPProxy
+# metadata:
+#  name: mlflow-httpproxy
+# spec:
+#   routes:
+#     - conditions:
+#         - prefix: /
+#       services:
+#         - name: mlflow-service
+#           port: 8020
+#   virtualhost:
+#     fqdn: mlflow.tanzudatatap.ml #replace with your HttpProxy-compatible FQDN

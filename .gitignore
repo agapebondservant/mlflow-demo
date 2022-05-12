@@ -1,2 +1,6 @@
 .ipynb_checkpoints
 .env
+resources/mlflow-creds-secret.yaml
+resources/mlflow-httpproxy.yaml
+resources/mlflow-clustersupplychain.yaml
+resources/mlflow-creds-sealedsecret.yaml
