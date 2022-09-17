@@ -4,3 +4,10 @@ resources/mlflow-creds-secret.yaml
 resources/mlflow-httpproxy.yaml
 resources/mlflow-clustersupplychain.yaml
 resources/mlflow-creds-sealedsecret.yaml
+package-contents/config
+package-repo/packages
+resources/mlflow-values.yaml
+package-contents/
+package-repo/
+package-contents/.imgpkg/images.yml
+resources/mlflow-values.yaml

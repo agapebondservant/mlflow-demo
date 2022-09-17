@@ -1,11 +1,5 @@
----
-apiVersion: v1
-data:
-  .dockerconfigjson: ${REGISTRY_CONFIG}
-kind: Secret
-metadata:
-  name: dockersecret
-type: kubernetes.io/dockerconfigjson
+#@ load("@ytt:data", "data")
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -23,32 +17,24 @@ spec:
     spec:
       containers:
         - name: mlflow
-          image: oawofolu/mlflow-server # replace with your container repo
+          image: oawofolu/mlflow-server
           imagePullPolicy: Always
           env:
             - name: MLFLOW_S3_ENDPOINT_URL
-              value: "https://minio.tanzudatatap.ml" #replace with your Minio endpoint
+              value: #@ data.values.artifact_store
             - name: S3_ACCESS_KEY_ID
-              valueFrom:
-                secretKeyRef:
-                  name: mlflowcreds
-                  key: S3_ACCESS_KEY_ID
-                  optional: false
+              value: #@ data.values.access_key
             - name: S3_SECRET_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: mlflowcreds
-                  key: S3_SECRET_ACCESS_KEY
-                  optional: false
+              value: #@ data.values.secret_key
             - name: MLFLOW_S3_IGNORE_TLS
-              value: "true"
+              value: #@ data.values.ignore_tls
             - name: S3_DEFAULT_REGION
-              value: "us-east-1" #replace with your bucket region
+              value: #@ data.values.region
             - name: BACKEND_URI
-              value: ${MLFLOW_DB_URI}
+              value: #@ data.values.backing_store
           ports:
             - name: http
-              containerPort: 8020
+              containerPort: 8080
               protocol: TCP
 ---
 apiVersion: v1
@@ -56,10 +42,10 @@ kind: Service
 metadata:
   name: mlflow-service
 spec:
-  type: NodePort
+  type: ClusterIP
   ports:
-    - port: 8020
-      targetPort: 8020
+    - port: 8080
+      targetPort: 8080
       protocol: TCP
       name: http
   selector:
@@ -75,6 +61,6 @@ spec:
         - prefix: /
       services:
         - name: mlflow-service
-          port: 8020
+          port: 8080
   virtualhost:
-    fqdn: mlflow-gui.tanzudatatap.ml
+    fqdn: #@ data.values.ingress_fqdn

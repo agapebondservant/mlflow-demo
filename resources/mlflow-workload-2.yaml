@@ -11,27 +11,15 @@ spec:
     - name: MLFLOW_S3_ENDPOINT_URL
       value: "https://minio.tanzudatatap.ml" #replace with your Minio endpoint
     - name: S3_ACCESS_KEY_ID
-      valueFrom:
-        secretKeyRef:
-          name: mlflowcreds
-          key: S3_ACCESS_KEY_ID
-          optional: false
+      value: i9GMOGOmV3yZ3UAXPtXd
     - name: S3_SECRET_ACCESS_KEY
-      valueFrom:
-        secretKeyRef:
-          name: mlflowcreds
-          key: S3_SECRET_ACCESS_KEY
-          optional: false
+      value: cN7yMaosU9hi8VcQyx60BmkrOnl3bDQXsx2AOnYP
     - name: MLFLOW_S3_IGNORE_TLS
       value: "true"
     - name: S3_DEFAULT_REGION
       value: "us-west-2" #replace with your Minio bucket region
     - name: BACKEND_URI
-      valueFrom:
-        secretKeyRef:
-          name: mlflowcreds
-          key: MLFLOW_BACKEND_URI
-          optional: false
+      value: "postgresql://pgadmin:08GW987IdkJT71RRV0al3lOsYhgJ7Q@ae1e4f54c0bb84227b061d09909ae316-2104557022.us-west-2.elb.amazonaws.com:5432/pg-mlflow"
   params:
     - name: live-update
       value: "true"

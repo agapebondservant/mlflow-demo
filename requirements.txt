@@ -1,4 +1,6 @@
-mlflow==1.19.0
+# mlflow==1.19.0
+protobuf>=3.12,<5.0
+mlflow==1.26.1
 mlflow-skinny
 sqlalchemy
 alembic

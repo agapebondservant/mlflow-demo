@@ -1,0 +1,13 @@
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: PackageMetadata
+metadata:
+  # This will be the name of our package
+  name: mlflow.tanzu.vmware.com
+spec:
+  displayName: "MLFlow on Tanzu"
+  longDescription: "MLOps framework for end-to-end machine learning"
+  shortDescription: "MLOps framework"
+  categories:
+    - ML
+    - AI
+    - "machine learning"

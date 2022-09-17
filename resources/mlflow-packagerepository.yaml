@@ -1,0 +1,8 @@
+apiVersion: packaging.carvel.dev/v1alpha1
+kind: PackageRepository
+metadata:
+  name: mlflow-package-repository
+spec:
+  fetch:
+    imgpkgBundle:
+      image: oawofolu/mlflow-packages-repo:1.0.0
