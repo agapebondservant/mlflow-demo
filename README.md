@@ -1,34 +1,28 @@
 ## Contents
-1. [Before you begin](#pre-reqs)
-2. [Install MLFlow via TAP/tanzu cli](#tanzu)
-3. [Install MLFlow with vanilla Kubernetes](#k8s)
-
-### Before you begin:<a name="pre-reqs"/>
-1. Update `resources/mlflow-deployment.yaml` by updating the **container image**, **Minio endpoint** and **Minio bucket region** as indicated in the file.
-2. If using Project Contour, uncomment out the `HttpProxy` section of the `resources/mlflow-deployment.yaml` file and update the referenced **FQDN** accordingly.
-3. Create an environment file `.env`; use `.env-sample` as a template.
+1. [Install MLFlow via TAP/tanzu cli](#tanzu)
+2. [Install MLFlow with vanilla Kubernetes](#k8s)
 
 ### Install MLFlow via TAP/tanzu cli<a name="tanzu"/>
-To install MLFlow via **tanzu cli** - first deploy Postgres operator (if it does not already exist):
+
+#### Before you begin (one time setup):
+1. Create an environment file `.env`; use `.env-sample` as a template.
+
+2. Deploy Postgres operator (if it does not already exist - else skip this step):
 ```
 resources/scripts/deploy-postgres-operator.sh
 ```
 
-Deploy Postgres cluster (if it does not already exist):
+3. Deploy Postgres cluster (if it does not already exist - else skip this step):
 ```
 resources/scripts/deploy-postgres-cluster.sh
 ```
 
-Export Postgres environment variables:
+4. Deploy Minio store (if it does not already exist - else skip this step):
 ```
-export MLFLOW_DB_HOST=$(kubectl get svc pg-mlflow-app-lb-svc -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
-export MLFLOW_DB_NAME=pg-mlflow-app
-export MLFLOW_DB_USER=$(kubectl get secret pg-mlflow-app-db-secret -o jsonpath='{.data.username}' | base64 --decode)
-export MLFLOW_DB_PASSWORD=$(kubectl get secret pg-mlflow-app-db-secret -o jsonpath='{.data.password}' | base64 --decode)
-export MLFLOW_DB_URI=postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@${MLFLOW_DB_HOST}:5432/${MLFLOW_DB_NAME}
+resources/scripts/deploy-minio.sh
 ```
 
-Build and push Docker image:
+5. Build and push Docker image:  (if it has not already been built - else skip this step):
 ```
 source .env
 docker build --build-arg MLFLOW_PORT_NUM=${MLFLOW_PORT} \
@@ -38,21 +32,24 @@ docker build --build-arg MLFLOW_PORT_NUM=${MLFLOW_PORT} \
 docker push ${MLFLOW_CONTAINER_REPO}
 ```
 
-Create the MLFlow package bundle as a pre-requisite:
+#### Deploy MLFlow
+6. Create the MLFlow package bundle as a pre-requisite (only necessary if any of the preceeding steps was executed):
 ```
 resources/scripts/create-mlflow-package-bundle.sh
 ```
 
+#### Deploy MLFlow
 Install the MLFlow Package Repository:
 ```
 tanzu package repository add mlflow-package-repository \
   --url oawofolu/mlflow-packages-repo:1.0.0 \
-  --namespace tap-install
+  --namespace mlflow \
+  --create-namespace
 ```
 
 Verify that the MLFlow package is available for install:
 ```
-tanzu package available list mlflow.tanzu.vmware.com --namespace tap-install
+tanzu package available list mlflow.tanzu.vmware.com --namespace mlflow 
 ```
 
 Generate a values.yaml file to use for the install - update as desired:
@@ -62,25 +59,40 @@ resources/scripts/generate-values-yaml.sh resources/mlflow-values.yaml #replace 
 
 Install via **tanzu cli**:
 ```
-tanzu package install mlflow -p mlflow.tanzu.vmware.com -v 1.0.0 --values-file resources/mlflow-values.yaml --namespace tap-install
+tanzu package install mlflow -p mlflow.tanzu.vmware.com -v 1.0.0 --values-file resources/mlflow-values.yaml --namespace mlflow 
 ```
 
 Verify that the install was successful:
 ```
-tanzu package installed get mlflow -n tap-install
+tanzu package installed get mlflow --namespace mlflow 
 ```
 
 To uninstall:
 ```
-tanzu package installed delete mlflow --namespace tap-install -y
-tanzu package repository delete mlflow-package-repository --namespace tap-install -y
+tanzu package installed delete mlflow --namespace mlflow  -y
+tanzu package repository delete mlflow-package-repository --namespace mlflow -y
+kubectl delete ns mlflow
 ```
 
-Finally, access the Tracker server via the **ingress_fqdn** indicated in resources/mlflow-values.yaml
+To uninstall Postgres/Minio dependencies:
+```
+kubectl delete postgres pg-mlflow-app
+helm uninstall minio -n minio-ml
+```
 
-### Deploy Postgres cluster<a name="pgcluster"/>
+Finally, access the Tracker server via the **ingress_fqdn** indicated in resources/mlflow-values.yaml.
 
-Deploy Postgres Operator via helm (if the operator does not exist in the cluster):
+### Install MLFlow via vanilla Kubernetes<a name="k8s"/>
+### (NOTE: needs cleanup)
+
+#### Before you begin:
+1. Update `resources/mlflow-deployment.yaml` by updating the **container image**, **Minio endpoint** and **Minio bucket region** as indicated in the file.
+
+2.If using Project Contour, uncomment out the `HttpProxy` section of the `resources/mlflow-deployment.yaml` file and update the referenced **FQDN** accordingly.
+
+3. Create an environment file `.env`; use `.env-sample` as a template.
+
+4. Deploy Postgres Operator via helm (if the operator does not exist in the cluster):
 ```
 helm uninstall postgres --namespace default
 for i in $(kubectl get clusterrole | grep postgres); do kubectl delete clusterrole ${i} > /dev/null 2>&1; done; 
@@ -95,30 +107,33 @@ helm install postgres resources/postgres/operator1.6.0 \
 kubectl apply -f resources/postgres/operator1.6.0/crds/
 ```
 
-Deploy Postgres Cluster:
+5. Deploy Postgres Cluster  (if the operator does not exist in the cluster):
 ```
 kubectl delete ns mlflow || true
 kubectl create ns mlflow
 kubectl apply -f resources/postgres/postgres-cluster.yaml -n mlflow --wait
 ```
 
-Wait for the Postgres cluster to be fully deployed:
+6. Wait for the Postgres cluster to be fully deployed:
 ```
 watch kubectl get all -l app=postgres -n mlflow
 ```
 
-Export Postgres environment variables:
+7. Export Postgres environment variables:
 ```
 export MLFLOW_DB_HOST=$(kubectl get svc pg-mlflow-lb-svc -n mlflow -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
 export MLFLOW_DB_NAME=pg-mlflow
 export MLFLOW_DB_USER=pgadmin 
 export MLFLOW_DB_PASSWORD=$(kubectl get secret pg-mlflow-db-secret -n mlflow -o jsonpath='{.data.password}' | base64 --decode)
 export MLFLOW_DB_URI=postgresql://${MLFLOW_DB_USER}:${MLFLOW_DB_PASSWORD}@${MLFLOW_DB_HOST}:5432/${MLFLOW_DB_NAME}
+kubectl create secret docker-registry mlflow-reg-secret --namespace=mlflow \
+        --docker-server=registry-1.docker.io \
+        --docker-username="$DOCKER_REG_USERNAME" \
+        --docker-password="$DOCKER_REG_PASSWORD"
+export REGISTRY_CONFIG=$(kubectl get secret mlflow-reg-secret -n mlflow -o jsonpath='{.data.\.dockerconfigjson}')
 ```
 
-### Install MLFlow via vanilla Kubernetes<a name="k8s"/>
-
-Build and push Docker image:
+8. Build and push Docker image:
 ```
 source .env
 docker build --build-arg MLFLOW_PORT_NUM=${MLFLOW_PORT} \
@@ -127,7 +142,7 @@ docker build --build-arg MLFLOW_PORT_NUM=${MLFLOW_PORT} \
 docker push ${MLFLOW_CONTAINER_REPO}
 ```
 
-Test running Docker image locally:
+9. Test running Docker image locally:
 ```
 export MLFLOW_DB_PASSWORD=$(kubectl get secret pg-mlflow-db-secret -n mlflow -o jsonpath='{.data.password}' | base64 --decode)
 #export MLFLOW_DB_URI=postgresql://pg-mlflow:${MLFLOW_DB_PASSWORD}@pg-mlflow.mlflow.svc.cluster.local:5432/pg-mlflow
@@ -142,7 +157,7 @@ docker run -it --rm -p 8020:8020 \
 --name mlflow-server ${MLFLOW_CONTAINER_REPO}
 ```
 
-Deploy MLFLOW access creds: (Requires Kubeseal installation: https://github.com/bitnami-labs/sealed-secrets/releases)
+10. Deploy MLFLOW access creds: (Requires Kubeseal installation: https://github.com/bitnami-labs/sealed-secrets/releases)
 ```
 kubectl apply -f https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.17.4/controller.yaml
 source .env # populate the .env file with the appropriate creds - use .env-sample as a template
@@ -155,7 +170,7 @@ rm mlflow-creds-secret.yaml docker-creds-secret.yaml
 kubectl apply -f resources/mlflow-creds-sealedsecret.yaml -n mlflow
 ```
 
-Deploy MlFlow Tracking Server to Kubernetes: (skip if deploying via TAP)
+12. Deploy MlFlow Tracking Server to Kubernetes: (skip if deploying via TAP)
 ```
 kubectl delete -f resources/mlflow-deployment.yaml -n mlflow || true
 source .env # populate the .env file with the appropriate creds - use .env-sample as a template
@@ -163,7 +178,7 @@ envsubst < resources/mlflow-deployment.yaml | kubectl apply  -n mlflow -f -
 watch kubectl get all -n mlflow
 ```
 
-Deploy MlFlow Tracking Server via TAP:
+13. Deploy MlFlow Tracking Server via TAP:
 ```
 kubectl create ns mlflow-demo
 kubectl create clusterrolebinding mlflow-demo:cluster-admin --clusterrole=cluster-admin --user=system:serviceaccount:mlflow-demo:default

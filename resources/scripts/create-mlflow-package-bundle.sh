@@ -2,6 +2,11 @@ source .env
 
 # login to container registry
 echo $DOCKER_REG_PASSWORD | docker login registry-1.docker.io --username=$DOCKER_REG_USERNAME --password-stdin
+kubectl create secret docker-registry mlflow-reg-secret --namespace=tap-install \
+        --docker-server=registry-1.docker.io \
+        --docker-username="$DOCKER_REG_USERNAME" \
+        --docker-password="$DOCKER_REG_PASSWORD"
+export REGISTRY_CONFIG=$(kubectl get secret mlflow-reg-secret -n tap-install -o jsonpath='{.data.\.dockerconfigjson}')
 
 # generate values.yaml file for values-schema
 resources/scripts/generate-values-schema-yaml.sh

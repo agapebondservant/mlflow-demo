@@ -11,3 +11,7 @@ package-contents/
 package-repo/
 package-contents/.imgpkg/images.yml
 resources/mlflow-values.yaml
+resources/minio/minio-http-proxy.yaml
+resources/minio/openssl.conf
+private.key
+public.crt

@@ -77,4 +77,4 @@ spec:
         - name: mlflow-service
           port: 8020
   virtualhost:
-    fqdn: mlflow-gui.tanzudatatap.ml
+    fqdn: mlflow.tanzudatatap.ml

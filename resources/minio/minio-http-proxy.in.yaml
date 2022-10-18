@@ -1,0 +1,15 @@
+apiVersion: projectcontour.io/v1
+kind: HTTPProxy
+metadata:
+  name: minio-httpproxy
+  namespace: minio-ml
+spec:
+  virtualhost:
+    fqdn: ${MLFLOW_S3_ENDPOINT_FQDN}
+    tls:
+      passthrough: true
+  tcpproxy:
+    services:
+    - name: minio
+      port: 9000
+    
